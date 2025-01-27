@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宠物消消乐</title>
+    <link rel="stylesheet" href="match3.css">
+</head>
+<body>
+    <div class="game-layout">
+        <!-- 左侧玩家信息栏 -->
+        <div class="player-panel">
+            <div class="player-avatar">
+                <img src="user/user.gif" alt="玩家头像">
+            </div>
+            <div class="player-info">
+                <div class="info-item">
+                    <span class="info-label">得分</span>
+                    <span id="score" class="info-value">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">剩余步数</span>
+                    <span id="moves" class="info-value">30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间游戏区域 -->
+        <div class="game-container">
+            <div id="grid" class="grid"></div>
+        </div>
+
+        <!-- 右侧BOSS信息栏 -->
+        <div class="boss-panel">
+            <div class="boss-avatar">
+                <img src="boss/boss.gif" alt="BOSS头像">
+            </div>
+            <div class="boss-info">
+                <div class="info-item">
+                    <span class="info-label">BOSS血量</span>
+                    <div class="health-bar">
+                        <div class="health-fill"></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">剩余时间</span>
+                    <span class="info-value">300s</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加特效容器 -->
+        <div class="effect-container">
+            <img id="effectImage" src="" alt="特效">
+        </div>
+
+        <!-- 添加音频元素 -->
+        <audio id="bgMusic" loop></audio>
+        <audio id="magicSound1"></audio>
+        <audio id="magicSound2"></audio>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
