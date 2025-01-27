@@ -31,5 +31,154 @@
     </nav>
     <h1>欢迎来到游戏中心</h1>
     <p>请选择一个游戏开始吧！</p>
+
+
+
+    <h1>接福小游戏 双人吃鸡版</h1>
+    <p>同时双人游戏，并且加入竞争机制。当玩家得分较多时会给对方生成炸弹，增加竞技性同时保持流行游戏元素。</p>
+    
+    <h2>技术栈分析</h2>
+    <h3>HTML5:</h3>
+    <ul>
+        <li>使用了标准的HTML5标签和结构，包括<audio>标签用于音频播放。</li>
+        <li>包含了多个页面元素（欢迎页、游戏页、结算弹窗），通过CSS类控制显示与隐藏。</li>
+    </ul>
+    
+    <h3>CSS3:</h3>
+    <ul>
+        <li>使用了CSS3的样式规则来美化页面，如flexbox布局、position定位、transition动画效果等。</li>
+        <li>通过媒体查询和响应式设计确保在不同设备上的良好显示。</li>
+        <li>使用了::before和::after伪元素以及background-image属性来实现背景图片和图标。</li>
+    </ul>
+    
+    <h3>JavaScript (ES6):</h3>
+    <ul>
+        <li>使用了ES6的类语法定义了一个Game类来管理整个游戏逻辑。</li>
+        <li>使用了querySelector, addEventListener, setInterval, clearInterval等DOM操作方法。</li>
+        <li>使用了localStorage来保存排行榜数据。</li>
+        <li>使用了Math.random()生成随机数，用于物品掉落位置和类型的选择。</li>
+        <li>使用了getBoundingClientRect()进行碰撞检测。</li>
+    </ul>
+    
+    <h2>逻辑分析</h2>
+    <h3>页面切换:</h3>
+    <ul>
+        <li>通过修改.active类来控制不同页面的显示与隐藏。</li>
+        <li>欢迎页点击“开始接福”按钮后切换到游戏页，游戏结束后显示结算弹窗。</li>
+    </ul>
+    
+    <h3>游戏初始化:</h3>
+    <ul>
+        <li>初始化时加载页面元素，并绑定事件监听器（如按钮点击、键盘按键）。</li>
+        <li>设置初始的游戏状态（如玩家分数、剩余时间、是否正在游戏等）。</li>
+    </ul>
+    
+    <h3>玩家控制:</h3>
+    <ul>
+        <li>玩家1使用WASD键移动，玩家2使用方向键移动。</li>
+        <li>移动逻辑通过调整玩家元素的left属性值实现。</li>
+    </ul>
+    
+    <h3>物品掉落:</h3>
+    <ul>
+        <li>定时生成道具并让其从顶部掉落到底部。</li>
+        <li>道具类型和数量是随机生成的，每次生成2-3个道具。</li>
+        <li>道具掉落速度固定为每20ms下降8px。</li>
+    </ul>
+    
+    <h3>碰撞检测:</h3>
+    <ul>
+        <li>当道具与玩家发生碰撞时，根据道具类型增加相应的分数或触发特殊事件（如炸弹）。</li>
+        <li>碰撞检测仅限于玩家上半部分区域，以提高游戏难度。</li>
+    </ul>
+    
+    <h3>计时器:</h3>
+    <ul>
+        <li>游戏时间为30秒，倒计时结束后结束游戏。</li>
+        <li>每秒更新一次剩余时间显示。</li>
+    </ul>
+    
+    <h3>游戏结束处理:</h3>
+    <ul>
+        <li>根据玩家得分判断胜负，并显示结果。</li>
+        <li>提供“再来！”按钮重置游戏状态。</li>
+    </ul>
+    
+    <h3>排行榜:</h3>
+    <ul>
+        <li>使用localStorage保存历史成绩，按分数排序并显示前10名。</li>
+        <li>每次游戏结束后更新当前用户的排名信息。</li>
+    </ul>
+    
+    <h2>算法分析</h2>
+    <ul>
+        <li>随机数生成算法: 使用Math.random()生成随机数，用于决定道具的类型和掉落位置。</li>
+        <li>定时器算法: 使用setInterval实现定时任务，如道具掉落、计时器倒计时等。</li>
+        <li>碰撞检测算法: 使用矩形碰撞检测算法，通过比较两个矩形的位置关系判断是否发生碰撞。</li>
+        <li>对玩家的碰撞检测区域进行了缩小，只检测玩家上半部分，增加了游戏挑战性。</li>
+        <li>排序算法: 使用Array.prototype.sort()对排行榜进行排序，按分数高低排列。</li>
+    </ul>
+    
+    <h2>总结</h2>
+    <p>该代码主要使用了HTML5、CSS3和JavaScript (ES6)构建了一个双人接福小游戏。游戏逻辑清晰，包含了页面切换、玩家控制、物品掉落、碰撞检测、计时器、游戏结束处理和排行榜等功能。算法方面主要涉及随机数生成、定时器、碰撞检测和排序等基础算法。</p>
+    
+    <h1>宠物消消乐</h1>
+    
+    <h2>总结</h2>
+    <h3>匹配检测算法</h3>
+    <pre><code class="language-javascript">for (let row = 0; row < gridSize - 2; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (grid[row][col].value === grid[row + 1][col].value && 
+                grid[row][col].value === grid[row + 2][col].value) {
+                matches.push([grid[row][col], grid[row + 1][col], grid[row + 2][col]]);
+            }
+        }
+    }</code></pre>
+    
+    <h3>水平匹配:</h3>
+    <pre><code class="language-javascript">for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize - 2; col++) {
+            if (grid[row][col].value === grid[row][col + 1].value && 
+                grid[row][col].value === grid[row][col + 2].value) {
+                matches.push([grid[row][col], grid[row][col + 1], grid[row][col + 2]]);
+            }
+        }
+    }</code></pre>
+    
+    <h3>垂直匹配:</h3>
+    <pre><code class="language-javascript">for (let row = 0; row < gridSize - 2; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (grid[row][col].value === grid[row + 1][col].value && 
+                grid[row][col].value === grid[row + 2][col].value) {
+                matches.push([grid[row][col], grid[row + 1][col], grid[row + 2][col]]);
+            }
+        }
+    }</code></pre>
+    
+    <h2>项目结构</h2>
+    <ul>
+        <li><strong>HTML文件</strong> (index.html): 定义了游戏的基本布局。</li>
+        <li><strong>CSS文件</strong> (style.css): 提供了游戏界面的样式。</li>
+        <li><strong>JavaScript文件</strong> (game.js): 实现了游戏的核心逻辑。</li>
+    </ul>
+    
+    <h2>核心算法说明</h2>
+    <ul>
+        <li><strong>匹配检测</strong>: 水平与垂直匹配检查连续三个或更多相同值的单元格。</li>
+        <li><strong>消除与填充</strong>: 标记并移除匹配单元格，更新分数，填充新单元格。</li>
+        <li><strong>关卡切换</strong>: 达到一定得分后进入下一关。</li>
+        <li><strong>交换失败处理</strong>: 处理无效交换，恢复原状并添加动画效果。</li>
+        <li><strong>特效与音效</strong>: 触发BOSS特效，播放音效。</li>
+    </ul>
+    
+    <h2>关键功能</h2>
+    <ul>
+        <li>初始化游戏、事件处理、UI更新、游戏结束与重新开始。</li>
+    </ul>
+    
+    <h2>总结</h2>
+    <p>通过上述整理，可以更清晰地了解“宠物消消乐”的技术实现和关键算法。</p>
+
+
 </body>
 </html>
