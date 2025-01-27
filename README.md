@@ -1,7 +1,8 @@
 使用通义灵码生成的三个游戏
 
-[百度](https://www.baidu.com)
-
+[宠物消消乐](https://jerrychoibyte.github.io/tongyi/%E5%AE%A0%E7%89%A9%E6%B6%88%E6%B6%88%E4%B9%90/index.html)
+[接福小游戏 双人吃鸡版](https://jerrychoibyte.github.io/tongyi/%E6%8E%A5%E7%A6%8F%E5%B0%8F%E6%B8%B8%E6%88%8F%20%E5%8F%8C%E4%BA%BA%E9%80%9A%E4%B9%89/index.html)
+[勇者斗恶龙](https://jerrychoibyte.github.io/tongyi/%E5%8B%87%E8%80%85%E6%96%97%E6%81%B6%E9%BE%99/main.html)
 
 以下内容同样使用通义生成
 
