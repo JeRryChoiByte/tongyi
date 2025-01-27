@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>角色移动演示</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #gameContainer {
+            position: relative;
+            width: 1000px;
+            height: 1000px;
+            border: 2px solid #333;
+        }
+        #mapImage {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        #player {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: left 0.5s linear, top 0.5s linear;
+            filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.3));
+            transform: translate(-75px, -75px);
+            z-index: 1;
+        }
+        .portal {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(0, 255, 255, 0.3);
+            border: 2px solid cyan;
+            border-radius: 50%;
+            transform: translate(-25px, -25px);
+        }
+        .enemy, .pet {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transform: translate(-50px! -50px);
+            z-index: 1;
+        }
+        .effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transform: translate(-50px, -50px);
+            z-index: 2;
+        }
+        #powerDisplay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border: 1px solid #333;
+            z-index: 2;
+        }
+        .gameWrapper {
+            display: flex;
+            gap: 20px;
+        }
+        
+        #uiContainer {
+            width: 300px;
+            height: 1000px;
+            border: 2px solid #333;
+            background-color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .uiSection {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        .uiTitle {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .characterImage {
+            width: 75px;
+            height: 75px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin: 10px auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        .battleTip {
+            color: #ff6b6b;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #fff3f3;
+            border-radius: 5px;
+        }
+        
+        .finalBoss {
+            position: absolute;
+            width: 300px;  /* 增加到300px */
+            height: 300px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transform: translate(-150px, -150px);  /* 调整偏移以保持居中 */
+            z-index: 1;
+        }
+
+        .endScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;  /* 改为纵向排列 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .endScreen img {
+            width: 400px;  /* 设置固定尺寸 */
+            height: 400px;
+            object-fit: contain;
+        }
+
+        .endText {
+            color: white;
+            font-size: 48px;
+            margin-top: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="gameWrapper">
+        <!-- 游戏主容器 -->
+        <div id="gameContainer">
+            <img id="mapImage" src="map/main.bmp" alt="地图" onerror="handleImageError(this)" onload="handleImageLoad(this)">
+            <div id="player"></div>
+        </div>
+
+        <!-- UI容器 -->
+        <div id="uiContainer">
+            <div class="uiSection">
+                <div class="uiTitle">角色信息</div>
+                <div>职业: 法师</div>
+                <div>战力: <span id="powerValue">5</span></div>
+            </div>
+            
+            <div class="uiSection">
+                <div class="uiTitle">当前状态</div>
+                <div class="characterImage" id="statusImage"></div>
+            </div>
+            
+            <div class="uiSection">
+                <div class="uiTitle">战斗提示</div>
+                <div class="battleTip" id="battleTip">寻找宠物 挑战敌人</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        class Game {
+            constructor() {
+                this.player = document.getElementById('player');
+                this.mapImage = document.getElementById('mapImage');
+                this.currentMap = 'main';
+                this.moveDistance = 50;
+                this.isMoving = false;
+                this.isAttacking = false;
+                this.moveSpeed = 350;  // 降低基础移动时间（提高30%速度）
+                
+                // 修改地图文件扩展名
+                this.maps = {
+                    main: { file: 'main.bmp', name: '主地图' },
+                    u: { file: 'u.bmp', name: '上方地图' },
+                    d: { file: 'd.bmp', name: '下方地图' },
+                    l: { file: 'l.bmp', name: '左侧地图' },
+                    r: { file: 'r.bmp', name: '右侧地图' }
+                };
+
+                // 调整传送门位置和触发范围
+                this.portals = {
+                    main: [
+                        { x: 500, y: 100, target: 'u', spawnAt: { x: 500, y: 800 } },
+                        { x: 500, y: 900, target: 'd', spawnAt: { x: 500, y: 200 } },
+                        { x: 100, y: 500, target: 'l', spawnAt: { x: 800, y: 500 } },
+                        { x: 900, y: 500, target: 'r', spawnAt: { x: 200, y: 500 } }
+                    ],
+                    u: [{ x: 500, y: 900, target: 'main', spawnAt: { x: 500, y: 200 } }],
+                    d: [{ x: 500, y: 100, target: 'main', spawnAt: { x: 500, y: 800 } }],
+                    l: [{ x: 900, y: 500, target: 'main', spawnAt: { x: 200, y: 500 } }],
+                    r: [{ x: 100, y: 500, target: 'main', spawnAt: { x: 800, y: 500 } }]
+                };
+
+                this.playerPos = { x: 500, y: 500 };
+                this.power = 5;
+                this.hasPet = false;
+                this.petCollected = false;
+                this.enemies = new Map();
+                this.isGameEnd = false;
+                
+                // 初始化敌人
+                this.initEnemies();
+                this.init();
+                this.updateUI();  // 添加UI更新
+            }
+
+            init() {
+                try {
+                    this.player.style.backgroundImage = "url('person/stay.gif')";
+                    this.updatePlayerPosition();
+                    this.createPortals();
+                    
+                    // 绑定键盘事件
+                    document.addEventListener('keydown', this.handleKeyPress.bind(this));
+                } catch (error) {
+                    console.error('初始化错误:', error);
+                }
+            }
+
+            createPortals() {
+                // 清除现有的传送门
+                document.querySelectorAll('.portal').forEach(portal => portal.remove());
+                
+                // 创建当前地图的传送门
+                this.portals[this.currentMap].forEach(portal => {
+                    const portalElement = document.createElement('div');
+                    portalElement.className = 'portal';
+                    portalElement.style.left = `${portal.x}px`;
+                    portalElement.style.top = `${portal.y}px`;
+                    document.getElementById('gameContainer').appendChild(portalElement);
+                });
+            }
+
+            changeMap(targetMap, spawnPos) {
+                try {
+                    console.log(`准备切换地图: ${this.currentMap} -> ${targetMap}`);
+                    
+                    // 检查目标地图是否有效
+                    if (!this.maps[targetMap]) {
+                        throw new Error(`无效的地图: ${targetMap}`);
+                    }
+
+                    const oldMap = this.currentMap;
+                    this.currentMap = targetMap;
+                    
+                    // 构建完整的图片URL
+                    const mapUrl = `map/${this.maps[targetMap].file}`;
+                    console.log('加载地图:', mapUrl);
+                    
+                    // 更新地图图片
+                    this.mapImage.src = mapUrl;
+                    
+                    // 更新玩家位置
+                    this.playerPos = { x: spawnPos.x, y: spawnPos.y };
+                    this.updatePlayerPosition();
+                    this.createPortals();
+                    
+                    // 检查是否需要生成最终BOSS
+                    if (targetMap === 'main' && this.power >= 20) {
+                        this.spawnFinalBoss();
+                    } else {
+                        this.initEnemies();  // 其他地图正常初始化敌人
+                    }
+                    
+                    console.log(`地图切换完成: ${oldMap} -> ${targetMap}`);
+                } catch (error) {
+                    console.error('切换地图错误:', error);
+                }
+            }
+
+            checkPortals() {
+                const portals = this.portals[this.currentMap];
+                for (let portal of portals) {
+                    const dx = this.playerPos.x - portal.x;
+                    const dy = this.playerPos.y - portal.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 75) {  // 增加传送门触发范围
+                        console.log(`触发传送: ${this.currentMap} -> ${portal.target}`);
+                        this.changeMap(portal.target, portal.spawnAt);
+                        break;
+                    }
+                }
+            }
+
+            updatePlayerPosition() {
+                this.player.style.left = `${this.playerPos.x}px`;
+                this.player.style.top = `${this.playerPos.y}px`;
+                this.checkPortals();
+                this.checkCollisions();
+            }
+
+            handleKeyPress(e) {
+                if (this.isMoving || this.isAttacking) return;
+
+                switch(e.key) {
+                    case 'ArrowUp': this.move('up'); break;
+                    case 'ArrowDown': this.move('down'); break;
+                    case 'ArrowLeft': this.move('left'); break;
+                    case 'ArrowRight': this.move('right'); break;
+                    case ' ': this.attack(); break;
+                }
+            }
+
+            move(direction) {
+                if (this.isMoving) return;
+
+                let newX = this.playerPos.x;
+                let newY = this.playerPos.y;
+                let imageName = '';
+
+                switch(direction) {
+                    case 'up':
+                        newY -= this.moveDistance;
+                        imageName = 'u.gif';
+                        break;
+                    case 'down':
+                        newY += this.moveDistance;
+                        imageName = 'd.gif';
+                        break;
+                    case 'left':
+                        newX -= this.moveDistance;
+                        imageName = 'l.gif';
+                        break;
+                    case 'right':
+                        newX += this.moveDistance;
+                        imageName = 'r.gif';
+                        break;
+                }
+
+                // 调整边界检查范围
+                if (newX >= 100 && newX <= 900 && newY >= 100 && newY <= 900) {
+                    this.isMoving = true;
+                    // 根据是否有宠物选择素材文件夹
+                    const folder = this.hasPet ? 'personpet/' : 'person/';
+                    this.player.style.backgroundImage = `url('${folder}${imageName}')`;
+                    this.playerPos = { x: newX, y: newY };
+                    this.updatePlayerPosition();
+
+                    // 根据是否有宠物调整移动速度
+                    const currentMoveSpeed = this.hasPet ? this.moveSpeed * 0.5 : this.moveSpeed;
+
+                    setTimeout(() => {
+                        this.isMoving = false;
+                        this.player.style.backgroundImage = `url('${folder}stay.gif')`;
+                    }, currentMoveSpeed);
+                }
+            }
+
+            attack() {
+                if (this.isAttacking) return;
+                
+                this.isAttacking = true;
+                this.player.style.backgroundImage = "url('person/att.gif')";
+                
+                setTimeout(() => {
+                    this.isAttacking = false;
+                    this.player.style.backgroundImage = "url('person/stay.gif')";
+                }, 500);
+            }
+
+            initEnemies() {
+                // 随机生成敌人位置和数量
+                const enemyPositions = {
+                    u: this.generateRandomEnemies('boss3'),
+                    d: this.generateRandomEnemies('boss4'),
+                    l: this.generateLeftMapEnemies(),
+                    r: this.generateRandomEnemies('boss2'),
+                    main: [] // 主地图不生成敌人
+                };
+
+                this.createEnemies(enemyPositions[this.currentMap]);
+            }
+
+            generateRandomEnemies(bossType) {
+                // 随机生成5-9个敌人
+                const count = Math.floor(Math.random() * 5) + 5;
+                const enemies = [];
+                
+                // 生成不重叠的随机位置
+                const usedPositions = new Set();
+                
+                for (let i = 0; i < count; i++) {
+                    let x, y;
+                    let positionKey;
+                    
+                    // 确保位置不重叠
+                    do {
+                        // 生成150-850范围内的随机位置（考虑边界和敌人大小）
+                        x = Math.floor(Math.random() * 701) + 150;
+                        y = Math.floor(Math.random() * 701) + 150;
+                        positionKey = `${x},${y}`;
+                    } while (usedPositions.has(positionKey));
+                    
+                    usedPositions.add(positionKey);
+                    
+                    // 随机选择boss类型（1-4）
+                    const randomBossNumber = Math.floor(Math.random() * 4) + 1;
+                    enemies.push({
+                        x: x,
+                        y: y,
+                        type: `boss${randomBossNumber}`
+                    });
+                }
+                
+                return enemies;
+            }
+
+            generateLeftMapEnemies() {
+                // 获取随机敌人
+                const enemies = this.generateRandomEnemies('boss1');
+                
+                // 如果宠物还没被收集，添加宠物
+                if (!this.petCollected) {
+                    enemies.push({ x: 500, y: 500, type: 'pet' });
+                }
+                
+                return enemies;
+            }
+
+            createEnemies(enemies) {
+                this.clearEnemies();
+                enemies?.forEach(enemy => {
+                    const enemyElement = document.createElement('div');
+                    enemyElement.className = enemy.type === 'pet' ? 'pet' : 'enemy';
+                    enemyElement.style.left = `${enemy.x}px`;
+                    enemyElement.style.top = `${enemy.y}px`;
+                    enemyElement.style.backgroundImage = `url('${enemy.type === 'pet' ? 'personpet/pet.gif' : 'monster/' + enemy.type + '.gif'}')`;
+                    
+                    document.getElementById('gameContainer').appendChild(enemyElement);
+                    this.enemies.set(enemyElement, {
+                        type: enemy.type,
+                        power: enemy.type === 'pet' ? 0 : parseInt(enemy.type.replace('boss', ''))
+                    });
+                });
+            }
+
+            clearEnemies() {
+                document.querySelectorAll('.enemy, .pet').forEach(element => {
+                    element.remove();
+                });
+                this.enemies.clear();
+            }
+
+            checkCollisions() {
+                const playerRect = {
+                    x: this.playerPos.x - 75,
+                    y: this.playerPos.y - 75,
+                    width: 150,
+                    height: 150
+                };
+
+                this.enemies.forEach((data, element) => {
+                    const enemyRect = {
+                        x: parseInt(element.style.left) - 50,
+                        y: parseInt(element.style.top) - 50,
+                        width: 100,
+                        height: 100
+                    };
+
+                    if (this.checkOverlap(playerRect, enemyRect)) {
+                        if (data.type === 'pet' && !this.hasPet) {
+                            this.getPet(element);
+                        } else if (!this.isAttacking) {
+                            this.attackEnemy(element, data);
+                        }
+                    }
+                });
+            }
+
+            checkOverlap(rect1, rect2) {
+                return !(rect1.x + rect1.width < rect2.x || 
+                        rect2.x + rect2.width < rect1.x || 
+                        rect1.y + rect1.height < rect2.y || 
+                        rect2.y + rect2.height < rect1.y);
+            }
+
+            getPet(petElement) {
+                this.hasPet = true;
+                this.petCollected = true;
+                petElement.remove();
+                this.enemies.delete(petElement);
+                
+                // 更换人物素材为骑宠物版本
+                const folder = 'personpet/';
+                this.player.style.backgroundImage = `url('${folder}stay.gif')`;
+                
+                // 更新移动动画时间
+                this.player.style.transition = 'left 0.25s linear, top 0.25s linear';
+                this.updateUI();  // 添加UI更新
+            }
+
+            attackEnemy(enemyElement, enemyData) {
+                if (this.power >= enemyData.power) {
+                    this.isAttacking = true;
+                    
+                    // 播放攻击动画
+                    const folder = this.hasPet ? 'personpet/' : 'person/';
+                    this.player.style.backgroundImage = `url('${folder}att.gif')`;
+                    
+                    // 随机选择攻击特效
+                    const effectNum = Math.floor(Math.random() * 3) + 1;
+                    const effect = document.createElement('div');
+                    effect.className = 'effect';
+                    effect.style.left = enemyElement.style.left;
+                    effect.style.top = enemyElement.style.top;
+                    effect.style.backgroundImage = `url('eff/${effectNum}.gif')`;
+                    document.getElementById('gameContainer').appendChild(effect);
+
+                    // 移除敌人和特效
+                    setTimeout(() => {
+                        enemyElement.remove();
+                        effect.remove();
+                        this.enemies.delete(enemyElement);
+                        this.power += enemyData.power;
+                        
+                        // 如果击败的是最终BOSS
+                        if (enemyData.type === 'final') {
+                            this.endGame();
+                        } else {
+                            // 检查是否需要生成最终BOSS
+                            if (this.power >= 20 && this.currentMap === 'main') {
+                                this.spawnFinalBoss();
+                            }
+                        }
+                        
+                        this.isAttacking = false;
+                        this.player.style.backgroundImage = `url('${folder}stay.gif')`;
+                        this.updateUI();
+                    }, 500);
+                }
+            }
+
+            spawnFinalBoss() {
+                this.clearEnemies();
+                const finalBoss = document.createElement('div');
+                finalBoss.className = 'finalBoss';  // 使用新的样式类
+                finalBoss.style.left = '500px';
+                finalBoss.style.top = '500px';
+                finalBoss.style.backgroundImage = "url('monster/final.gif')";
+                
+                // 添加特效
+                finalBoss.style.animation = 'finalBossAppear 1s';
+                finalBoss.style.boxShadow = '0 0 50px rgba(255, 0, 0, 0.5)';
+                
+                document.getElementById('gameContainer').appendChild(finalBoss);
+                
+                this.enemies.set(finalBoss, {
+                    type: 'final',
+                    power: 20
+                });
+
+                // 更新战斗提示
+                const battleTip = document.getElementById('battleTip');
+                battleTip.textContent = '最终BOSS已出现！';
+                battleTip.style.backgroundColor = '#ffe0e0';
+                battleTip.style.color = '#ff0000';
+            }
+
+            endGame() {
+                this.isGameEnd = true;
+                
+                // 创建结束画面容器
+                const endScreen = document.createElement('div');
+                endScreen.className = 'endScreen';
+                
+                // 创建结束动画
+                const endImage = document.createElement('img');
+                endImage.src = 'ui/end.gif';
+                endScreen.appendChild(endImage);
+                
+                // 添加结束文字
+                const endText = document.createElement('div');
+                endText.className = 'endText';
+                endText.textContent = '游戏结束';
+                endScreen.appendChild(endText);
+                
+                // 添加到页面
+                document.body.appendChild(endScreen);
+                
+                // 禁用游戏控制
+                document.removeEventListener('keydown', this.handleKeyPress);
+                
+                // 可选：添加点击事件关闭结束画面
+                endScreen.addEventListener('click', () => {
+                    endScreen.remove();
+                    location.reload();
+                });
+            }
+
+            updateUI() {
+                // 更新战力显示
+                document.getElementById('powerValue').textContent = this.power;
+                
+                // 更新状态图片
+                const statusImage = document.getElementById('statusImage');
+                const folder = this.hasPet ? 'personpet' : 'person';
+                statusImage.style.backgroundImage = `url('${folder}/stay.gif')`;
+                
+                // 更新战斗提示
+                const battleTip = document.getElementById('battleTip');
+                if (this.power >= 20) {
+                    battleTip.textContent = '回到主地图挑战最终BOSS';
+                    battleTip.style.backgroundColor = '#fff3d9';
+                    battleTip.style.color = '#ffa502';
+                } else {
+                    battleTip.textContent = '寻找宠物 挑战敌人';
+                    battleTip.style.backgroundColor = '#fff3f3';
+                    battleTip.style.color = '#ff6b6b';
+                }
+            }
+        }
+
+        window.onload = () => {
+            try {
+                window.game = new Game();
+            } catch (error) {
+                console.error('游戏启动错误:', error);
+            }
+        };
+    </script>
+</body>
+</html>
