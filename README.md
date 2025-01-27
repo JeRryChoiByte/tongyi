@@ -10,9 +10,16 @@
 
 ### 总结
 匹配检测算法:
-
+```for (let row = 0; row < gridSize - 2; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        if (grid[row][col].value === grid[row + 1][col].value && 
+            grid[row][col].value === grid[row + 2][col].value) {
+            matches.push([grid[row][col], grid[row + 1][col], grid[row + 2][col]]);
+        }
+    }
+}```
 水平匹配:
-javascript
+```javascript
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize - 2; col++) {
         if (grid[row][col].value === grid[row][col + 1].value && 
@@ -20,9 +27,9 @@ for (let row = 0; row < gridSize; row++) {
             matches.push([grid[row][col], grid[row][col + 1], grid[row][col + 2]]);
         }
     }
-}
+}```
 垂直匹配:
-javascript
+```javascript
 for (let row = 0; row < gridSize - 2; row++) {
     for (let col = 0; col < gridSize; col++) {
         if (grid[row][col].value === grid[row + 1][col].value && 
@@ -30,7 +37,7 @@ for (let row = 0; row < gridSize - 2; row++) {
             matches.push([grid[row][col], grid[row + 1][col], grid[row + 2][col]]);
         }
     }
-}
+}```
 消除与填充算法:
 #### 项目结构
 - **HTML文件** (`index.html`): 定义了游戏的基本布局，包括玩家信息栏、游戏区域和BOSS信息栏。还包含了特效容器和音频元素。
