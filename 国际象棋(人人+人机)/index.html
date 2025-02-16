@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess</title>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+    <script src="js/chess.min.js"></script>
+    <script src="js/chessboard-1.0.0.min.js"></script>
+    <script>
+        var stockfishObjectURL;
+        function createStockfishWorker() {
+            if (stockfishObjectURL) {
+                URL.revokeObjectURL(stockfishObjectURL);
+            }
+            var req = new XMLHttpRequest();
+            req.open('GET', 'js/stockfish.js', false);
+            req.send(null);
+            var blob = new Blob([req.response], {type: 'application/javascript'});
+            stockfishObjectURL = URL.createObjectURL(blob);
+            return new Worker(stockfishObjectURL);
+        }
+    </script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 禁用滚动 */
+            touch-action: none; /* 禁用移动设备的默认触摸行为 */
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 100;
+            width: min(90%, 280px);
+        }
+
+        .menu-container.hidden {
+            display: none;
+        }
+
+        .board-container {
+            display: none;
+            width: min(95vmin, 600px);
+            height: min(95vmin, 600px);
+            aspect-ratio: 1;
+            touch-action: none;  /* 禁用默认触摸行为 */
+            -webkit-touch-callout: none;  /* 禁用触摸时的系统菜单 */
+            -webkit-user-select: none;    /* 禁用文本选择 */
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .board-container.visible {
+            display: block;
+        }
+
+        #board {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent; /* 移除触摸高亮 */
+        }
+
+        select, button {
+            display: none;
+        }
+
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            width: 100%;
+        }
+
+        .mode-button {
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background: white;
+            color: #4CAF50;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        .mode-button:hover {
+            background: #4CAF50;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+        }
+
+        .difficulty-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            padding: 0.5rem 0;
+        }
+
+        .difficulty-label {
+            text-align: center;
+            font-size: 1rem;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: -0.5rem;
+        }
+
+        .difficulty-value {
+            font-size: 1.8rem;
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: -0.5rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            margin: 0.5rem 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .start-button {
+            padding: 0.8rem 1.5rem;
+            font-size: 1.1rem;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .start-button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+        }
+
+        .start-button.visible {
+            display: block;
+        }
+
+        #status {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            display: none;
+            z-index: 1000;
+            text-align: center;
+            min-width: 200px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-result {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .countdown {
+            display: block;
+            font-size: 2.5rem;
+            margin-top: 1rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .thinking {
+            position: absolute;
+            top: 3.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.4rem 1rem;
+            background: rgba(33, 37, 41, 0.9);
+            color: white;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 修改返回按钮样式 */
+        .return-button {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 确保棋子可以正确响应触摸 */
+        .square-55d63 {
+            touch-action: none;
+        }
+    </style>
+    <!-- 修改音效资源 -->
+    <audio id="moveSound" preload="auto">
+        <source src="sounds/move.ogg" type="audio/ogg">
+        <source src="sounds/move.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="captureSound" preload="auto">
+        <source src="sounds/capture.ogg" type="audio/ogg">
+        <source src="sounds/capture.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="checkSound" preload="auto">
+        <source src="sounds/check.ogg" type="audio/ogg">
+    </audio>
+    <audio id="gameOverSound" preload="auto">
+        <source src="sounds/victory.ogg" type="audio/ogg">
+        <source src="sounds/victory.mp3" type="audio/mpeg">
+    </audio>
+</head>
+<body>
+    <div class="game-container">
+        <div class="menu-container" id="menuContainer">
+            <div class="mode-buttons">
+                <div class="mode-button" data-mode="pvp">人人对战</div>
+                <div class="mode-button" data-mode="pve">人机对战</div>
+            </div>
+            <div id="difficultyContainer" class="difficulty-container">
+                <div class="difficulty-label">选择难度</div>
+                <div class="difficulty-value"><span id="difficultyValue">5</span> 级</div>
+                <input type="range" id="difficulty" min="1" max="10" value="5">
+                <button class="start-button" id="startGame">开始游戏</button>
+            </div>
+        </div>
+        <div id="status"></div>
+        <div id="thinking" class="thinking">AI思考中...</div>
+        <div id="game-over"></div>
+        <div class="board-container" id="boardContainer">
+            <div id="board"></div>
+        </div>
+        <button class="return-button" id="returnButton">返回主菜单</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let game = new Chess();
+            let board = null;
+            let isAgainstComputer = false;
+            let computerColor = 'b';
+            let difficulty = 5;
+            let stockfish = null;
+            let isEngineThinking = false;
+            
+            const statusEl = document.getElementById('status');
+            const gameOverEl = document.getElementById('game-over');
+            const modeButtons = document.querySelectorAll('.mode-button');
+            const difficultyContainer = document.getElementById('difficultyContainer');
+            const difficultyInput = document.getElementById('difficulty');
+            const difficultyValue = document.getElementById('difficultyValue');
+            const startGameBtn = document.getElementById('startGame');
+            const menuContainer = document.getElementById('menuContainer');
+            const boardContainer = document.getElementById('boardContainer');
+            const thinkingEl = document.getElementById('thinking');
+            const returnButton = document.getElementById('returnButton');
+
+            // 添加音效元素
+            const moveSound = document.getElementById('moveSound');
+            const captureSound = document.getElementById('captureSound');
+            const checkSound = document.getElementById('checkSound');
+            const gameOverSound = document.getElementById('gameOverSound');
+
+            // 播放音效函数
+            function playSound(sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log('音效播放失败:', e));
+            }
+
+            // 修改 Stockfish 初始化
+            function initStockfish() {
+                try {
+                    if (stockfish) return;
+                    
+                    // 使用 Worker 方式初始化
+                    stockfish = createStockfishWorker();
+                    
+                    stockfish.onmessage = function(event) {
+                        const message = event.data;  // 改回使用 event.data
+                        console.log('Stockfish:', message);
+                        
+                        if (message.startsWith('bestmove')) {
+                            const move = message.split(' ')[1];
+                            if (move && move !== '(none)') {
+                                executeComputerMove(move);
+                            }
+                            isEngineThinking = false;
+                            thinkingEl.style.display = 'none';
+                        }
+                    };
+
+                    stockfish.onerror = function(error) {
+                        console.error('Stockfish worker error:', error);
+                        isAgainstComputer = false;
+                        alert('AI模式暂时不可用，将切换为人人对战模式');
+                    };
+
+                    // 初始化引擎
+                    stockfish.postMessage('uci');
+                    stockfish.postMessage('ucinewgame');
+                    stockfish.postMessage('isready');
+                } catch (error) {
+                    console.error('Stockfish 初始化失败:', error);
+                    isAgainstComputer = false;
+                    alert('AI模式暂时不可用，将切换为人人对战模式');
+                }
+            }
+
+            // 修改游戏模式选择逻辑
+            modeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const mode = this.dataset.mode;
+                    if (mode === 'pve') {
+                        difficultyContainer.style.display = 'flex';
+                        document.querySelector('.mode-buttons').style.display = 'none';
+                        document.getElementById('startGame').classList.add('visible');
+                        initStockfish();
+                    } else {
+                        isAgainstComputer = false;
+                        initGame(false); // 传入 false 表示人人对战模式
+                    }
+                });
+            });
+
+            // 监听难度改变
+            difficultyInput.addEventListener('input', function() {
+                difficulty = parseInt(this.value);
+                difficultyValue.textContent = difficulty;
+            });
+
+            // 计算思考时间和深度
+            function getEngineSettings(difficulty) {
+                // 难度从1到10映射到具体的引擎参数
+                const depth = Math.floor(difficulty * 2); // 深度从2到20
+                const time = Math.floor(difficulty * 200); // 思考时间从200ms到2000ms
+                return { depth, time };
+            }
+
+            // 执行电脑移动
+            function executeComputerMove(move) {
+                const from = move.substring(0, 2);
+                const to = move.substring(2, 4);
+                const promotion = move.length === 5 ? move[4] : undefined;
+
+                game.move({ from, to, promotion });
+                board.position(game.fen());
+                updateStatus();
+            }
+
+            // AI移动逻辑
+            function makeComputerMove() {
+                if (!isAgainstComputer || game.turn() !== computerColor || game.game_over() || isEngineThinking) {
+                    return;
+                }
+
+                isEngineThinking = true;
+                thinkingEl.style.display = 'block';
+
+                const settings = getEngineSettings(difficulty);
+                
+                // 发送当前局面给引擎
+                stockfish.postMessage('position fen ' + game.fen());
+                // 设置搜索参数
+                stockfish.postMessage('setoption name Skill Level value ' + difficulty);
+                // 开始搜索
+                stockfish.postMessage(`go depth ${settings.depth} movetime ${settings.time}`);
+            }
+
+            // 修改状态更新函数
+            function updateStatus() {
+                let status = '';
+                let gameOverMessage = '';
+
+                if (game.in_checkmate()) {
+                    const winner = game.turn() === 'w' ? '黑方' : '白方';
+                    gameOverMessage = `将死！${winner}获胜！`;
+                    playSound(gameOverSound);
+                } else if (game.in_draw()) {
+                    gameOverMessage = '和棋！';
+                    playSound(gameOverSound);
+                } else if (game.in_check()) {
+                    status = `将军！轮到${game.turn() === 'w' ? '白' : '黑'}方走棋`;
+                    playSound(checkSound);
+                } else {
+                    status = `轮到${game.turn() === 'w' ? '白' : '黑'}方走棋`;
+                }
+
+                statusEl.style.display = status ? 'block' : 'none';
+                statusEl.textContent = status;
+                
+                if (gameOverMessage) {
+                    let countdown = 10;
+                    gameOverEl.innerHTML = `
+                        <div class="game-result">${gameOverMessage}</div>
+                        <div>游戏结束，即将返回主菜单</div>
+                        <div class="countdown">${countdown}</div>
+                    `;
+                    gameOverEl.style.display = 'block';
+                    
+                    // 开始倒计时
+                    const timer = setInterval(() => {
+                        countdown--;
+                        const countdownEl = gameOverEl.querySelector('.countdown');
+                        if (countdownEl) {
+                            countdownEl.textContent = countdown;
+                        }
+                        
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            gameOverEl.style.display = 'none';
+                            returnButton.style.display = 'block';
+                        }
+                    }, 1000);
+                } else if (isAgainstComputer && !isEngineThinking) {
+                    makeComputerMove();
+                }
+            }
+
+            // 修改游戏初始化函数
+            function initGame(isPveMode = true) {
+                game = new Chess();
+                isAgainstComputer = isPveMode;
+                if (isPveMode) {
+                    difficulty = parseInt(difficultyInput.value);
+                }
+                
+                menuContainer.classList.add('hidden');
+                boardContainer.classList.add('visible');
+                statusEl.style.display = 'block';
+                gameOverEl.style.display = 'none';
+
+                const config = {
+                    draggable: true,
+                    position: 'start',
+                    pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+                    onDragStart: function(source, piece, position, orientation) {
+                        // 如果游戏结束，阻止移动
+                        if (game.game_over()) return false;
+
+                        // 人机模式的额外检查
+                        if (isAgainstComputer) {
+                            if (isEngineThinking) return false;
+                            if (game.turn() === computerColor) return false;
+                        }
+
+                        // 检查是否是当前回合的棋子
+                        const currentColor = game.turn();
+                        if ((currentColor === 'w' && piece.search(/^b/) !== -1) ||
+                            (currentColor === 'b' && piece.search(/^w/) !== -1)) {
+                            return false;
+                        }
+                        return true;
+                    },
+                    onDrop: function (source, target) {
+                        const move = game.move({
+                            from: source,
+                            to: target,
+                            promotion: 'q'
+                        });
+
+                        if (move === null) return 'snapback';
+                        
+                        if (move.captured) {
+                            playSound(captureSound);
+                        } else {
+                            playSound(moveSound);
+                        }
+                        
+                        window.setTimeout(updateStatus, 200);
+                    },
+                    // 添加触摸设备支持
+                    moveSpeed: 200,
+                    snapbackSpeed: 200,
+                    snapSpeed: 200,
+                    trashSpeed: 100
+                };
+
+                if (board) {
+                    board.clear();
+                    board.destroy();
+                }
+                board = Chessboard('board', config);
+
+                // 添加触摸拖拽支持
+                const boardEl = document.getElementById('board');
+                let draggedPiece = null;
+                let startSquare = null;
+
+                boardEl.addEventListener('touchstart', function(e) {
+                    const touch = e.touches[0];
+                    const square = $(document.elementFromPoint(touch.clientX, touch.clientY)).closest('.square-55d63');
+                    if (square.length) {
+                        startSquare = square.data('square');
+                        const piece = board.position()[startSquare];
+                        if (piece) {
+                            // 检查是否可以移动这个棋子
+                            if (config.onDragStart(startSquare, piece, board.position(), board.orientation())) {
+                                draggedPiece = piece;
+                                // 添加视觉反馈
+                                square.addClass('highlight-square');
+                            }
+                        }
+                    }
+                    e.preventDefault();
+                }, { passive: false });
+
+                boardEl.addEventListener('touchmove', function(e) {
+                    if (draggedPiece) {
+                        const touch = e.touches[0];
+                        const square = $(document.elementFromPoint(touch.clientX, touch.clientY)).closest('.square-55d63');
+                        if (square.length) {
+                            $('.square-55d63').removeClass('highlight-square');
+                            square.addClass('highlight-square');
+                        }
+                    }
+                    e.preventDefault();
+                }, { passive: false });
+
+                boardEl.addEventListener('touchend', function(e) {
+                    if (draggedPiece) {
+                        const touch = e.changedTouches[0];
+                        const square = $(document.elementFromPoint(touch.clientX, touch.clientY)).closest('.square-55d63');
+                        if (square.length) {
+                            const targetSquare = square.data('square');
+                            if (targetSquare !== startSquare) {
+                                const move = game.move({
+                                    from: startSquare,
+                                    to: targetSquare,
+                                    promotion: 'q'
+                                });
+
+                                if (move !== null) {
+                                    // 立即更新棋盘显示
+                                    board.position(game.fen());
+                                    
+                                    // 播放音效
+                                    if (move.captured) {
+                                        playSound(captureSound);
+                                    } else {
+                                        playSound(moveSound);
+                                    }
+                                    
+                                    // 更新游戏状态
+                                    window.setTimeout(updateStatus, 200);
+                                }
+                            }
+                        }
+                        // 清除状态和高亮
+                        $('.square-55d63').removeClass('highlight-square');
+                        draggedPiece = null;
+                        startSquare = null;
+                    }
+                    e.preventDefault();
+                }, { passive: false });
+
+                // 添加高亮样式
+                const style = document.createElement('style');
+                style.textContent = `
+                    .highlight-square {
+                        box-shadow: inset 0 0 3px 3px yellow;
+                    }
+                `;
+                document.head.appendChild(style);
+
+                window.setTimeout(updateStatus, 200);
+                returnButton.style.display = 'none';
+            }
+
+            // 添加返回按钮点击事件
+            returnButton.addEventListener('click', function() {
+                location.reload();
+            });
+
+            // 确保页面完全加载后再初始化事件监听
+            $(document).ready(function() {
+                startGameBtn.addEventListener('click', () => initGame(true)); // 传入 true 表示人机对战模式
+                window.addEventListener('resize', function() {
+                    if (board) {
+                        board.resize();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
