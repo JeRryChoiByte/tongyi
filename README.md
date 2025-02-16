@@ -1,4 +1,7 @@
+更新:
+- [国际象棋人机加人人对战版](https://jerrychoibyte.github.io/tongyi/%E5%9B%BD%E9%99%85%E8%B1%A1%E6%A3%8B(%E4%BA%BA%E4%BA%BA+%E4%BA%BA%E6%9C%BA)/index.html)
 
+#用JS的AI框架在纯静态下实现专业级的国际象棋对战,还包含人人对战,无需再下载APP或忍受广告,前端运行web版
 ---
 
 ## 使用通义灵码生成的游戏
